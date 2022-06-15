@@ -14,8 +14,6 @@ def main():
     with open(args.config, 'r') as configFile:
         data = yaml.load(configFile, Loader=yaml.FullLoader)
 
-#    print(data)
-
     hosts = []
 
     cimc_ips= []
@@ -29,24 +27,13 @@ def main():
         for a in data['svrs'][i]:
             hosts.append(a)
 
-
         for b in data['svrs'][i]:
             cimc_ips.append(data['svrs'][i][b]['cimc_ip'])
-
 
         i += 1
 
     print(hosts)
     print(cimc_ips)
 
-
-    
-
-'''
-   # print(hostnames)
-   # print(data['cimc_user'])
-   # print(data['cimc_passwd'])
-'''
-    
 if __name__ == "__main__":
     main()
