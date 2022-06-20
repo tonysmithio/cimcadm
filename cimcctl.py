@@ -52,7 +52,7 @@ parser.add_argument('-c', '--config', help='config file in yaml format', require
 parser.add_argument('--test_login', help='Test CIMC login', action='store_true')
 parser.add_argument('--get_inv', help='Get Inventory of Chassis', nargs='+', choices=['all','disks','cpu','pci','psu','storage'])
 parser.add_argument('--get_faults',help='Get Faults of Chassis', action='store_true')
-parser.add_argument('--set_name',help='CIMC Hostname', action='store_true')
+parser.add_argument('--set_name',help='Update CIMC Hostname', action='store_true')
 
 args = parser.parse_args()
 
