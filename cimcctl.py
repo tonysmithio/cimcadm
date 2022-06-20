@@ -7,12 +7,14 @@ import time
 import requests
 import urllib.error
 import logging
+import imcsdk
+from threading import Thread
 from imcsdk.imcexception import ImcException
 from imcsdk.imchandle import ImcHandle
 from imcsdk.apis.server.inventory import inventory_get
 from imcsdk.apis.server.health import faults_get
 
-logging.basicConfig(format='%(levelname)s | %(asctime)s | %(message)s', level=logging.WARNING, datefmt='%d-%b-%Y %H:%M:%S')
+logging.basicConfig(format='%(levelname)s | %(asctime)s | %(message)s', level=logging.DEBUG, datefmt='%d-%b-%Y %H:%M:%S')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--config', help='config file in yaml format', required=True)
@@ -24,73 +26,96 @@ args = parser.parse_args()
 with open(args.config, 'r') as configFile:
         data = yaml.load(configFile, Loader=yaml.FullLoader)
 
-hosts = []
-
-cimc_ips= []
 
 svr_count = len(data['svrs'])
 
-for a in data['svrs']:
-    hosts.append(a['name'])
 
-for b in data['svrs']:
-    cimc_ips.append(b['cimc_ip'])
-
-
-def login_test():
-    for c in cimc_ips:
-        handle = ImcHandle(str(c),str(data['cimc_user']),str(data['cimc_passwd']))
+def login_test(ip,user,password):
         try:
+            handle = ImcHandle(ip,user,password)
             handle.login()
-            logging.debug('SVR IP: '+handle._ImcSession__ip+' | Connection Successful.')
+            logging.debug('cimc_ip: '+handle._ImcSession__ip+' | Connection Successful.')
             handle.logout()
-        except urllib.error.URLError:
-            logging.error('SVR IP: '+handle._ImcSession__ip+' | Connection Failure.')
+        except urllib.error.URLError as e1:
+            logging.error('cimc_ip: '+handle._ImcSession__ip+' | Connection Failure.')
+        except imcsdk.imcexception.ImcException as e2:
+            logging.error('cimc_ip: '+handle._ImcSession__ip+' | Authentication Failure.')
 
 
-def grab_inventory():
-    for c in cimc_ips:
-        handle = ImcHandle(c,data['cimc_user'],data['cimc_passwd'])
+def grab_faults(ip,user,password):
         try:
-           handle.login()
-           inv = inventory_get(handle=handle, component=args.get_inv)
-           inv_yaml = yaml.dump(inv, sort_keys=False)
-           handle.logout()
-           logging.info(inv_yaml)
-        except urllib.error.URLError:
-            logging.error('SVR IP: '+handle._ImcSession__ip+' | Connection Failure.')
-
-def grab_faults():
-    for c in cimc_ips:
-        handle = ImcHandle(c,data['cimc_user'],data['cimc_passwd'])
-        try:
+            handle = ImcHandle(ip,user,password)
             handle.login()
             faults = faults_get(handle=handle)
             if len(faults) == 0:
-              logging.info(c+': No Faults!')
+              logging.info(handle._ImcSession__ip+': No Faults!')
             elif len(faults) > 0:
                for f in faults:
                    faults_dict = {}
                    for key,value in f.__dict__.items():
                       faults_dict.update({key: value})
-                   logging.error('SVR IP: '+c+' | '+faults_dict['descr'])
+                   logging.error('cimc_ip: '+handle._ImcSession__ip+' | '+faults_dict['descr'])
             handle.logout()
-        except urllib.error.URLError:
-            logging.error('SVR IP: '+handle._ImcSession__ip+' | Connection Failure.')
+        except urllib.error.URLError as e1:
+            logging.error('cimc_ip: '+handle._ImcSession__ip+' | Connection Failure.')
+        except imcsdk.imcexception.ImcException as e2:
+            logging.error('cimc_ip: '+handle._ImcSession__ip+' | Authentication Failure.')
+
+
+
+def grab_inventory(ip,user,password):
+        try:
+           handle = ImcHandle(ip,user,password)
+           handle.login()
+           inv = inventory_get(handle=handle, component=args.get_inv)
+           inv_yaml = yaml.dump(inv, sort_keys=False)
+           handle.logout()
+           logging.info(inv_yaml)
+        except urllib.error.URLError as e1:
+            logging.error('cimc_ip: '+handle._ImcSession__ip+' | Connection Failure.')
+        except imcsdk.imcexception.ImcException as e2:
+            logging.error('cimc_ip: '+handle._ImcSession__ip+' | Authentication Failure.')
+
         
 
-
-
 def main():
+    handle=ImcHandle('10.3.1.101','admin','GDTlabs@123!')
+    handle.login()
+    mgmtif = handle.query_dn('sys/rack-unit-1/mgmt/if-1')
+    mgmtif.hostname='test-svr-01'
+    handle.set_mo(mgmtif)
+    handle.logout()
+
+    
+
 
     if args.test_login:
-        login_test()
+        threads = []
+        for z in range(0,svr_count):
+            thread = Thread(target=login_test, args=(data['svrs'][z]['cimc_ip'],data['cimc_user'],data['cimc_passwd']))
+            threads.append(thread)
+            thread.start()
+        for thread in threads:
+            thread.join()
             
     if args.get_inv:
-        grab_inventory()
+        threads = []
+        for z in range(0,svr_count):
+            thread = Thread(target=grab_inventory, args=(data['svrs'][z]['cimc_ip'],data['cimc_user'],data['cimc_passwd']))
+            threads.append(thread)
+            thread.start()
+        for thread in threads:
+            thread.join()
 
     if args.get_faults:
-        grab_faults()
+        threads = []
+        for z in range(0,svr_count):
+            thread = Thread(target=grab_faults, args=(data['svrs'][z]['cimc_ip'],data['cimc_user'],data['cimc_passwd']))
+            threads.append(thread)
+            thread.start()
+        for thread in threads:
+            thread.join()
+
 
 if __name__ == "__main__":
     main()
