@@ -14,12 +14,16 @@ from imcsdk.imcexception import ImcException
 from imcsdk.imchandle import ImcHandle
 from imcsdk.apis.server.inventory import inventory_get
 from imcsdk.apis.server.health import faults_get
+from imcsdk.utils.imcfirmwareinstall import *
+
+
+log_colors_dict = {'INFO':'white','DEBUG':'cyan','WARNING':'bold_yellow','ERROR':'red','CRITICAL':'bold_red'}
 
 loginLogger = colorlog.getLogger('login_logger')
 loginLogger.setLevel(logging.INFO)
 loginConsole = colorlog.StreamHandler()
 loginConsole.setLevel(logging.INFO)
-loginFormat = colorlog.ColoredFormatter('%(log_color)s %(message)s', datefmt='%d-%b-%Y %H:%M:%S')
+loginFormat = colorlog.ColoredFormatter('%(log_color)s %(message)s', datefmt='%d-%b-%Y %H:%M:%S',log_colors=log_colors_dict)
 loginConsole.setFormatter(loginFormat)
 loginLogger.addHandler(loginConsole)
 
@@ -27,7 +31,7 @@ faultLogger = colorlog.getLogger('faults_logger')
 faultLogger.setLevel(logging.INFO)
 faultConsole = colorlog.StreamHandler()
 faultConsole.setLevel(logging.INFO)
-faultFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s', datefmt='%d-%b-%Y %H:%M:%S')
+faultFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s', datefmt='%d-%b-%Y %H:%M:%S',log_colors=log_colors_dict)
 faultConsole.setFormatter(faultFormat)
 faultLogger.addHandler(faultConsole)
 
@@ -35,7 +39,7 @@ invLogger = colorlog.getLogger('inv_logger')
 invLogger.setLevel(logging.INFO)
 invConsole = colorlog.StreamHandler()
 invConsole.setLevel(logging.INFO)
-invFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s', datefmt='%d-%b-%Y %H:%M:%S')
+invFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s', datefmt='%d-%b-%Y %H:%M:%S',log_colors=log_colors_dict)
 invConsole.setFormatter(invFormat)
 invLogger.addHandler(invConsole)
 
@@ -43,7 +47,7 @@ attLogger = colorlog.getLogger('att_logger')
 attLogger.setLevel(logging.INFO)
 attConsole = colorlog.StreamHandler()
 attConsole.setLevel(logging.INFO)
-attFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s', datefmt='%d-%b-%Y %H:%M:%S')
+attFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s', datefmt='%d-%b-%Y %H:%M:%S',log_colors=log_colors_dict)
 attConsole.setFormatter(attFormat)
 attLogger.addHandler(attConsole)
 
@@ -52,15 +56,18 @@ parser.add_argument('-c', '--config', help='config file in yaml format', require
 parser.add_argument('--test_login', help='Test CIMC login', action='store_true')
 parser.add_argument('--get_inv', help='Get Inventory of Chassis', nargs='+', choices=['all','disks','cpu','pci','psu','storage'])
 parser.add_argument('--get_faults',help='Get Faults of Chassis', action='store_true')
-parser.add_argument('--set_name',help='Update CIMC Hostname', action='store_true')
+parser.add_argument('--set_name', help='Update CIMC Hostname', action='store_true')
+parser.add_argument('--update_firmware', help='Initiate firmware update', action='store_true')
 
 args = parser.parse_args()
+
 
 with open(args.config, 'r') as configFile:
         data = yaml.load(configFile, Loader=yaml.FullLoader)
 
 
 svr_count = len(data['svrs'])
+
 
 
 def login_test(ip,user,password):
@@ -128,9 +135,32 @@ def set_hostname(ip,user,password,name):
     except imcsdk.imcexception.ImcException as e2:
         attLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
 
+def firmwareUpdate(ip,user,password):
+    try:
+        handle = ImcHandle(ip,user,password)
+        handle.login()
+        firmware_update(handle=handle, remote_share=data['huu_iso'], share_type=data['huu_protocol'], remote_ip=data['huu_svr_ip'],
+                username='', password='', update_component=data['huu_component'], stop_on_error='yes', timeout=90, verify_update='yes',
+                cimc_secure_boot='no', server_id=1, force=data['huu_force'], interval=20, backup_fw=False)
+        handle.logout()
+        attLogger.warning('cimc-ip: '+handle._ImcSession__ip+'| firmware update is complete')
+    except urllib.error.URLError as e1:
+        attLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
+    except imcsdk.imcexception.ImcException as e2:
+        attLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
+
 
 def main():
-    
+
+
+    if args.update_firmware:
+        threads = []
+        for z in range(0,svr_count):
+            thread = Thread(target=firmwareUpdate, args=(data['svrs'][z]['cimc_ip'],data['cimc_user'],data['cimc_passwd']))
+            threads.append(thread)
+            thread.start()
+        for thread in threads:
+            thread.join()
 
     if args.set_name:
         threads = []
