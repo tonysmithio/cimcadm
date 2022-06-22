@@ -143,7 +143,6 @@ def firmwareUpdate(ip,user,password):
                 username='', password='', update_component=data['huu_component'], stop_on_error='yes', timeout=90, verify_update='yes',
                 cimc_secure_boot='no', server_id=1, force=data['huu_force'], interval=20, backup_fw=False)
         handle.logout()
-        attLogger.warning('cimc-ip: '+handle._ImcSession__ip+'| firmware update is complete')
     except urllib.error.URLError as e1:
         attLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
     except imcsdk.imcexception.ImcException as e2:
