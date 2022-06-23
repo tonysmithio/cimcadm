@@ -69,7 +69,6 @@ with open(args.config, 'r') as configFile:
 svr_count = len(data['svrs'])
 
 
-
 def login_test(ip,user,password):
         try:
             handle = ImcHandle(ip,user,password)
@@ -82,8 +81,7 @@ def login_test(ip,user,password):
             loginLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
 
 
-def grab_faults(ip,user,password):
-        
+def grab_faults(ip,user,password): 
         try:
             handle = ImcHandle(ip,user,password)
             handle.login()
@@ -135,6 +133,7 @@ def set_hostname(ip,user,password,name):
     except imcsdk.imcexception.ImcException as e2:
         attLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
 
+
 def firmwareUpdate(ip,user,password):
     try:
         handle = ImcHandle(ip,user,password)
@@ -149,26 +148,59 @@ def firmwareUpdate(ip,user,password):
         attLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
 
 
+
 def main():
 
 
     if args.update_firmware:
         threads = []
         for z in range(0,svr_count):
-            thread = Thread(target=firmwareUpdate, args=(data['svrs'][z]['cimc_ip'],data['cimc_user'],data['cimc_passwd']))
+            if 'cimc_user' in data['svrs'][z]:
+                user = data['svrs'][z]['cimc_user']
+            elif 'cimc_user' not in data['svrs'][z] and 'cimc_user' in data:
+                user = data['cimc_user']
+            elif 'cimc_user' not in data['svrs'][z] and 'cimc_user' not in data:
+                raise ValueError(data['svrs'][z]['name']+' is missing "cimc_user" in config file')
+
+            if 'cimc_passwd' in data['svrs'][z]:
+                passwd = data['svrs'][z]['cimc_passwd']
+            elif 'cimc_passwd' not in data['svrs'][z] and 'cimc_passwd' in data:
+                passwd = data['cimc_passwd']
+            elif 'cimc_passwd' not in data['svrs'][z] and 'cimc_passwd' not in data:
+                raise ValueError(data['svrs'][z]['name']+' is missing "cimc_passwd" in config file')
+
+        for z in range(0,svr_count):
+            thread = Thread(target=firmwareUpdate, args=(data['svrs'][z]['cimc_ip'],user,passwd))
             threads.append(thread)
             thread.start()
         for thread in threads:
             thread.join()
 
+
     if args.set_name:
         threads = []
         for z in range(0,svr_count):
-            thread = Thread(target=set_hostname, args=(data['svrs'][z]['cimc_ip'],data['cimc_user'],data['cimc_passwd'],data['svrs'][z]['name']))
+            if 'cimc_user' in data['svrs'][z]:
+                user = data['svrs'][z]['cimc_user']
+            elif 'cimc_user' not in data['svrs'][z] and 'cimc_user' in data:
+                user = data['cimc_user']
+            elif 'cimc_user' not in data['svrs'][z] and 'cimc_user' not in data:
+                raise ValueError(data['svrs'][z]['name']+' is missing "cimc_user" in config file')
+
+            if 'cimc_passwd' in data['svrs'][z]:
+                passwd = data['svrs'][z]['cimc_passwd']
+            elif 'cimc_passwd' not in data['svrs'][z] and 'cimc_passwd' in data:
+                passwd = data['cimc_passwd']
+            elif 'cimc_passwd' not in data['svrs'][z] and 'cimc_passwd' not in data:
+                raise ValueError(data['svrs'][z]['name']+' is missing "cimc_passwd" in config file')
+
+        for z in range(0,svr_count):
+            thread = Thread(target=set_hostname, args=(data['svrs'][z]['cimc_ip'],user,passwd,data['svrs'][z]['name']))
             threads.append(thread)
             thread.start()
         for thread in threads:
             thread.join()
+
 
     if args.test_login:
         threads = []
@@ -192,20 +224,52 @@ def main():
             thread.start()
         for thread in threads:
             thread.join()
-            
+
+
     if args.get_inv:
         threads = []
         for z in range(0,svr_count):
-            thread = Thread(target=grab_inventory, args=(data['svrs'][z]['cimc_ip'],data['cimc_user'],data['cimc_passwd']))
+            if 'cimc_user' in data['svrs'][z]:
+                user = data['svrs'][z]['cimc_user']
+            elif 'cimc_user' not in data['svrs'][z] and 'cimc_user' in data:
+                user = data['cimc_user']
+            elif 'cimc_user' not in data['svrs'][z] and 'cimc_user' not in data:
+                raise ValueError(data['svrs'][z]['name']+' is missing "cimc_user" in config file')
+
+            if 'cimc_passwd' in data['svrs'][z]:
+                passwd = data['svrs'][z]['cimc_passwd']
+            elif 'cimc_passwd' not in data['svrs'][z] and 'cimc_passwd' in data:
+                passwd = data['cimc_passwd']
+            elif 'cimc_passwd' not in data['svrs'][z] and 'cimc_passwd' not in data:
+                raise ValueError(data['svrs'][z]['name']+' is missing "cimc_passwd" in config file')
+
+        for z in range(0,svr_count):
+            thread = Thread(target=grab_inventory, args=(data['svrs'][z]['cimc_ip'],user,passwd))
             threads.append(thread)
             thread.start()
         for thread in threads:
             thread.join()
 
+
     if args.get_faults:
         threads = []
         for z in range(0,svr_count):
-            thread = Thread(target=grab_faults, args=(data['svrs'][z]['cimc_ip'],data['cimc_user'],data['cimc_passwd']))
+            if 'cimc_user' in data['svrs'][z]:
+                user = data['svrs'][z]['cimc_user']
+            elif 'cimc_user' not in data['svrs'][z] and 'cimc_user' in data:
+                user = data['cimc_user']
+            elif 'cimc_user' not in data['svrs'][z] and 'cimc_user' not in data:
+                raise ValueError(data['svrs'][z]['name']+' is missing "cimc_user" in config file')
+
+            if 'cimc_passwd' in data['svrs'][z]:
+                passwd = data['svrs'][z]['cimc_passwd']
+            elif 'cimc_passwd' not in data['svrs'][z] and 'cimc_passwd' in data:
+                passwd = data['cimc_passwd']
+            elif 'cimc_passwd' not in data['svrs'][z] and 'cimc_passwd' not in data:
+                raise ValueError(data['svrs'][z]['name']+' is missing "cimc_passwd" in config file')
+
+        for z in range(0,svr_count):
+            thread = Thread(target=grab_faults, args=(data['svrs'][z]['cimc_ip'],user,passwd))
             threads.append(thread)
             thread.start()
         for thread in threads:
