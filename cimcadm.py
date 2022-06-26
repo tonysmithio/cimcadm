@@ -51,13 +51,14 @@ attFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s',
 attConsole.setFormatter(attFormat)
 attLogger.addHandler(attConsole)
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(prog='cimcadm',formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-c', '--config', help='config file in yaml format', required=True)
-parser.add_argument('--test_login', help='Test CIMC login', action='store_true')
-parser.add_argument('--get_inv', help='Get Inventory of Chassis', nargs='+', choices=['all','disks','cpu','pci','psu','storage'])
-parser.add_argument('--get_faults',help='Get Faults of Chassis', action='store_true')
-parser.add_argument('--set_name', help='Update CIMC Hostname', action='store_true')
-parser.add_argument('--update_firmware', help='Initiate firmware update', action='store_true')
+parser.add_argument('--test-login', help='Test CIMC login', action='store_true')
+invOptions=['all','cpu','disks','pci','psu','storage']
+parser.add_argument('--get-inv', metavar='', help='Collect and display inventory for one or more components separated by a space.\nList of inventory options: {%(choices)s}', nargs='+', choices=invOptions)
+parser.add_argument('--get-faults', help='Get Faults of Chassis', action='store_true')
+parser.add_argument('--set-hostname', help='Update CIMC Hostname', action='store_true')
+parser.add_argument('--update-firmware', help='Initiate firmware update', action='store_true')
 
 args = parser.parse_args()
 
@@ -127,7 +128,7 @@ def set_hostname(ip,user,password,name):
             mgmtif.hostname = name
             handle.set_mo(mgmtif)
             handle.logout()
-            attLogger.warning('cimc-ip: '+handle._ImcSession__ip+'| cimc-hostname has been changed to "'+name+'"')
+            attLogger.warning('cimc-ip: '+handle._ImcSession__ip+' | cimc-hostname has been changed to "'+name+'"')
     except urllib.error.URLError as e1:
         attLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
     except imcsdk.imcexception.ImcException as e2:
@@ -177,7 +178,7 @@ def main():
             thread.join()
 
 
-    if args.set_name:
+    if args.set_hostname:
         threads = []
         for z in range(0,svr_count):
             if 'cimc_user' in data['svrs'][z]:
