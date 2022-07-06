@@ -19,37 +19,14 @@ from imcsdk.utils.imcfirmwareinstall import *
 
 log_colors_dict = {'INFO':'white','DEBUG':'cyan','WARNING':'bold_yellow','ERROR':'red','CRITICAL':'bold_red'}
 
-loginLogger = colorlog.getLogger('login_logger')
-loginLogger.setLevel(logging.INFO)
-loginConsole = colorlog.StreamHandler()
-loginConsole.setLevel(logging.INFO)
-loginFormat = colorlog.ColoredFormatter('%(log_color)s %(message)s', datefmt='%d-%b-%Y %H:%M:%S',log_colors=log_colors_dict)
-loginConsole.setFormatter(loginFormat)
-loginLogger.addHandler(loginConsole)
+eventLogger = colorlog.getLogger('event_logger')
+eventLogger.setLevel(logging.INFO)
+eventConsole = colorlog.StreamHandler()
+eventConsole.setLevel(logging.INFO)
+eventFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s', datefmt='%d-%b-%Y %H:%M:%S',log_colors=log_colors_dict)
+eventConsole.setFormatter(eventFormat)
+eventLogger.addHandler(eventConsole)
 
-faultLogger = colorlog.getLogger('faults_logger')
-faultLogger.setLevel(logging.INFO)
-faultConsole = colorlog.StreamHandler()
-faultConsole.setLevel(logging.INFO)
-faultFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s', datefmt='%d-%b-%Y %H:%M:%S',log_colors=log_colors_dict)
-faultConsole.setFormatter(faultFormat)
-faultLogger.addHandler(faultConsole)
-
-invLogger = colorlog.getLogger('inv_logger')
-invLogger.setLevel(logging.INFO)
-invConsole = colorlog.StreamHandler()
-invConsole.setLevel(logging.INFO)
-invFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s', datefmt='%d-%b-%Y %H:%M:%S',log_colors=log_colors_dict)
-invConsole.setFormatter(invFormat)
-invLogger.addHandler(invConsole)
-
-attLogger = colorlog.getLogger('att_logger')
-attLogger.setLevel(logging.INFO)
-attConsole = colorlog.StreamHandler()
-attConsole.setLevel(logging.INFO)
-attFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s', datefmt='%d-%b-%Y %H:%M:%S',log_colors=log_colors_dict)
-attConsole.setFormatter(attFormat)
-attLogger.addHandler(attConsole)
 
 parser = argparse.ArgumentParser(prog='cimcadm',formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-c', '--config', help='config file in yaml format', required=True)
@@ -74,12 +51,12 @@ def login_test(ip,user,password):
         try:
             handle = ImcHandle(ip,user,password)
             handle.login()
-            loginLogger.info('cimc-ip: '+handle._ImcSession__ip+' | Login Successful.')
+            eventLogger.info('cimc-ip: '+handle._ImcSession__ip+' | Login Successful.')
             handle.logout()
         except urllib.error.URLError as e1:
-            loginLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
+            eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
         except imcsdk.imcexception.ImcException as e2:
-            loginLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
+            eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
 
 
 def grab_faults(ip,user,password): 
@@ -88,18 +65,18 @@ def grab_faults(ip,user,password):
             handle.login()
             faults = faults_get(handle=handle)
             if len(faults) == 0:
-                faultLogger.info('cimc-ip: '+handle._ImcSession__ip+' | No Faults!')
+                eventLogger.info('cimc-ip: '+handle._ImcSession__ip+' | No Faults!')
             elif len(faults) > 0:
                for f in faults:
                    faults_dict = {}
                    for key,value in f.__dict__.items():
                       faults_dict.update({key: value})
-                   faultLogger.critical('cimc-ip: '+handle._ImcSession__ip+' | '+faults_dict['descr'])
+                   eventLogger.critical('cimc-ip: '+handle._ImcSession__ip+' | '+faults_dict['descr'])
             handle.logout()
         except urllib.error.URLError as e1:
-            faultLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
+            eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
         except imcsdk.imcexception.ImcException as e2:
-            faultLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
+            eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
 
 
 def grab_inventory(ip,user,password):
@@ -109,11 +86,11 @@ def grab_inventory(ip,user,password):
            inv = inventory_get(handle=handle, component=args.get_inv)
            inv_yaml = yaml.dump(inv, sort_keys=False)
            handle.logout()
-           invLogger.info(inv_yaml)
+           eventLogger.info(inv_yaml)
         except urllib.error.URLError as e1:
-            invLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
+            eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
         except imcsdk.imcexception.ImcException as e2:
-            invLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
+            eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
 
         
 def set_hostname(ip,user,password,name):
@@ -123,16 +100,16 @@ def set_hostname(ip,user,password,name):
         mgmtif = handle.query_dn('sys/rack-unit-1/mgmt/if-1')
         if mgmtif.hostname == name:
             handle.logout()
-            attLogger.info('cimc-ip: '+handle._ImcSession__ip+' | cimc-hostname is already set to "'+mgmtif.hostname+'"')
+            eventLogger.info('cimc-ip: '+handle._ImcSession__ip+' | cimc-hostname is already set to "'+mgmtif.hostname+'"')
         elif mgmtif.hostname != name:
             mgmtif.hostname = name
             handle.set_mo(mgmtif)
             handle.logout()
-            attLogger.warning('cimc-ip: '+handle._ImcSession__ip+' | cimc-hostname has been changed to "'+name+'"')
+            eventLogger.warning('cimc-ip: '+handle._ImcSession__ip+' | cimc-hostname has been changed to "'+name+'"')
     except urllib.error.URLError as e1:
-        attLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
+        eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
     except imcsdk.imcexception.ImcException as e2:
-        attLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
+        eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
 
 
 def firmwareUpdate(ip,user,password):
@@ -144,9 +121,9 @@ def firmwareUpdate(ip,user,password):
                 cimc_secure_boot='no', server_id=1, force=data['huu_force'], interval=20, backup_fw=False)
         handle.logout()
     except urllib.error.URLError as e1:
-        attLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
+        eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
     except imcsdk.imcexception.ImcException as e2:
-        attLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
+        eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
 
 
 
