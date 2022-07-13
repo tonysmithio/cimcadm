@@ -38,6 +38,7 @@ parser.add_argument('--get-faults', help='Get Faults of Chassis', action='store_
 parser.add_argument('--set-hostname', help='Update CIMC Hostname', action='store_true')
 parser.add_argument('--update-firmware', help='Initiate firmware update', action='store_true')
 parser.add_argument('--clean-disks', help='Clear boot-drive, remove all virtual disks, and reset all physical disks', action='store_true')
+parser.add_argument('--make-bootdisk', help='Create "Root" disk', action='store_true')
 
 args = parser.parse_args()
 
@@ -133,7 +134,7 @@ def cleanDisks(ip,user,password):
     try:
         handle = ImcHandle(ip,user,password)
         handle.login()
-        raid_controller = handle.query_dn('sys/rack-unit-1/board/storage-SAS-MRAID')
+        raid_controller = handle.query_dn('sys/rack-unit-1/board/storage-'+data['storage']['ctlr_type']+'-'+data['storage']['ctlr_slot'])
         raid_controller.admin_action = 'clear-boot-drive'
         handle.set_mo(raid_controller)
         eventLogger.info('cimc-ip: '+handle._ImcSession__ip+' | Cleared Boot Drive')
@@ -147,7 +148,61 @@ def cleanDisks(ip,user,password):
         eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')
 
 
+
+
+def createBootDisk(ip,user,password):
+    try:
+        handle = ImcHandle(ip,user,password)
+        drive_list = []
+        drive_list.append(data['storage']['bootdisk']['pd_grp'])
+        cleanDisks(ip,user,password)
+        handle.login()
+        virtual_drive_create(handle=handle,virtual_drive_name=data['storage']['bootdisk']['vd_name'],
+                raid_level=data['storage']['bootdisk']['raid_lvl'],
+                drive_group=drive_list,
+                size=data['storage']['bootdisk']['size'],
+                controller_type=data['storage']['ctlr_type'],
+                controller_slot=data['storage']['ctlr_slot'])
+        handle.logout()
+        eventLogger.info('cimc-ip: '+handle._ImcSession__ip+' | Created "'+data['storage']['bootdisk']['vd_name']+'" virtual disk.')
+        handle.login()
+        virtual_drive_set_boot_drive(handle=handle,
+                controller_type=data['storage']['ctlr_type'],
+                controller_slot=data['storage']['ctlr_slot'],
+                name=data['storage']['bootdisk']['vd_name'])
+        handle.logout()
+        eventLogger.info('cimc-ip: '+handle._ImcSession__ip+' | Set "Boot Drive" parameter to "true".')
+    except urllib.error.URLError as e1:
+        eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Connection Failure.')
+    except imcsdk.imcexception.ImcException as e2:
+        eventLogger.error('cimc-ip: '+handle._ImcSession__ip+' | Authentication Failure.')    
+
+
 def main():
+
+    if args.make_bootdisk:
+        threads = []
+        for z in range(0,svr_count):
+            if 'cimc_user' in data['svrs'][z]:
+                user = data['svrs'][z]['cimc_user']
+            elif 'cimc_user' not in data['svrs'][z] and 'cimc_user' in data:
+                user = data['cimc_user']
+            elif 'cimc_user' not in data['svrs'][z] and 'cimc_user' not in data:
+                raise ValueError(data['svrs'][z]['name']+' is missing "cimc_user" in config file')
+
+            if 'cimc_passwd' in data['svrs'][z]:
+                passwd = data['svrs'][z]['cimc_passwd']
+            elif 'cimc_passwd' not in data['svrs'][z] and 'cimc_passwd' in data:
+                passwd = data['cimc_passwd']
+            elif 'cimc_passwd' not in data['svrs'][z] and 'cimc_passwd' not in data:
+                raise ValueError(data['svrs'][z]['name']+' is missing "cimc_passwd" in config file')
+
+        for z in range(0,svr_count):
+            thread = Thread(target=createBootDisk, args=(data['svrs'][z]['cimc_ip'],user,passwd))
+            threads.append(thread)
+            thread.start()
+        for thread in threads:
+            thread.join()
 
 
     if args.clean_disks:
