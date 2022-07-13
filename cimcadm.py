@@ -28,8 +28,10 @@ eventFormat = colorlog.ColoredFormatter('%(log_color)s %(asctime)s | %(message)s
 eventConsole.setFormatter(eventFormat)
 eventLogger.addHandler(eventConsole)
 
+vtext = "{'Python':'3.9.7','imcsdk':'0.9.12','cimcadm':'0.0.10'}"
 
 parser = argparse.ArgumentParser(prog='cimcadm',formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('--version', action='version', version=vtext) 
 parser.add_argument('-c', '--config', help='config file in yaml format', required=True)
 parser.add_argument('--test-login', help='Test CIMC login', action='store_true')
 invOptions=['all','cpu','disks','pci','psu','storage']
