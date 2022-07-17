@@ -42,7 +42,7 @@ parser.add_argument('--set-hostname', help='Update CIMC Hostname', action='store
 parser.add_argument('--update-firmware', help='Initiate firmware update', action='store_true')
 parser.add_argument('--clean-disks', help='Clear boot-drive, remove all virtual disks, and reset all physical disks', action='store_true')
 parser.add_argument('--make-bootdisk', help='Create "Root" disk', action='store_true')
-parser.add_argument('-t','--threads',help='Maximum number threads to be processed at one time; default is %(default)s', default=6)
+parser.add_argument('-t','--threads', type=int, help='Maximum number threads to be processed at one time; default is %(default)s', default=6)
 
 args = parser.parse_args()
 
